@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f5132">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>Resultados dos Sorteios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --verde-escuro:#0f5132; --verde-medio:#15663f; --verde-claro:#1a7d4d;
+    --verde-suave:#e8f3ed; --verde-badge:#d1f0df;
+    --tinta:#16201a; --tinta-suave:#5b6b62; --branco:#ffffff;
+    --fundo:#f4f6f5; --borda:#e2e8e4; --ouro:#caa23a;
+    --sombra-cartao:0 20px 50px -12px rgba(15,81,50,.18);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+    background:var(--fundo); color:var(--tinta);
+    -webkit-font-smoothing:antialiased; line-height:1.55;
+  }
+  h1,h2,h3{font-family:'Sora',sans-serif}
+  .wrap{max-width:760px;margin:0 auto;padding:30px 20px 70px}
+
+  .topo{display:flex;align-items:center;gap:13px;margin-bottom:6px}
+  .logo{
+    width:46px;height:46px;border-radius:13px;flex-shrink:0;
+    background:linear-gradient(150deg,var(--verde-claro),var(--verde-escuro));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 18px -6px rgba(15,81,50,.5);
+  }
+  .logo svg{width:24px;height:24px;stroke:#fff}
+  .topo h1{font-size:21px;font-weight:800;letter-spacing:-.01em;line-height:1.1}
+  .topo p{font-size:13px;color:var(--tinta-suave)}
+  .voltar{display:inline-block;margin:14px 0 22px;font-size:13.5px;
+    color:var(--verde-medio);text-decoration:none;font-weight:600}
+
+  .edicao{
+    background:var(--branco);border:1px solid var(--borda);
+    border-radius:18px;padding:20px 22px;margin-bottom:16px;
+    box-shadow:var(--sombra-cartao);
+  }
+  .edicao-cab{display:flex;justify-content:space-between;align-items:baseline;
+    gap:10px;flex-wrap:wrap;margin-bottom:14px;
+    padding-bottom:12px;border-bottom:1px solid var(--borda)}
+  .edicao-cab h2{font-size:19px;font-weight:800}
+  .edicao-cab .data{font-size:12.5px;color:var(--tinta-suave);font-weight:600}
+
+  .ganhador{
+    display:flex;gap:12px;align-items:center;padding:11px 0;
+    border-bottom:1px solid var(--fundo);
+  }
+  .ganhador:last-child{border-bottom:none}
+  .ganhador .ico{font-size:24px;flex-shrink:0;width:30px;text-align:center}
+  .ganhador .corpo{flex:1;min-width:0}
+  .ganhador .rot{font-family:'Sora',sans-serif;font-weight:700;font-size:14px}
+  .ganhador .desc{font-size:12px;color:var(--tinta-suave)}
+  .ganhador .nome{
+    font-size:14px;color:var(--verde-escuro);font-weight:600;margin-top:2px;
+  }
+  .ganhador .cup{
+    display:inline-block;background:var(--ouro);color:#2a2300;font-weight:700;
+    font-size:11px;padding:1px 7px;border-radius:6px;margin-right:6px;
+  }
+
+  .vazio{
+    background:var(--branco);border:1px solid var(--borda);border-radius:18px;
+    padding:46px 24px;text-align:center;box-shadow:var(--sombra-cartao);
+  }
+  .carregando{text-align:center;padding:40px 20px;color:var(--tinta-suave);
+    font-size:14px;font-weight:600}
+  .vazio .emoji{font-size:42px}
+  .vazio h2{font-size:18px;font-weight:800;margin:12px 0 5px}
+  .vazio p{font-size:14px;color:var(--tinta-suave)}
+
+  footer{margin-top:34px;text-align:center;color:#aab1ab;font-size:11.5px}
+
+  @media(max-width:680px){ .wrap{padding:22px 14px 56px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topo">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+        <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Resultados dos Sorteios</h1>
+      <p>Ganhadores das edições já encerradas.</p>
+    </div>
+  </div>
+
+  <a class="voltar" href="/">← Voltar para o sorteio atual</a>
+
+  <div id="lista"><div class="carregando">Carregando resultados…</div></div>
+
+  <footer>Sorteio de Cupons · v<span id="fVersao">2.0.2</span></footer>
+</div>
+
+<script>
+function escapar(s){
+  return String(s).replace(/[&<>"]/g,m=>(
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+}
+function dataBR(iso){
+  try{
+    const d=new Date(iso);
+    return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }catch(e){ return ''; }
+}
+
+async function carregar(){
+  const lista=document.getElementById('lista');
+  let dados;
+  try{
+    const r=await fetch('/api/resultados',{cache:'no-store'});
+    dados=await r.json();
+  }catch(e){
+    lista.innerHTML='<div class="vazio"><div class="emoji">⚠️</div>'+
+      '<h2>Não foi possível carregar</h2><p>Tente novamente em instantes.</p></div>';
+    return;
+  }
+  document.getElementById('fVersao').textContent=dados.versao||'2.0';
+
+  if(!dados.edicoes || dados.edicoes.length===0){
+    lista.innerHTML='<div class="vazio"><div class="emoji">🎟️</div>'+
+      '<h2>Ainda não há sorteios encerrados</h2>'+
+      '<p>Quando o primeiro sorteio for realizado, os ganhadores aparecem aqui.</p></div>';
+    return;
+  }
+
+  let html='';
+  dados.edicoes.forEach(ed=>{
+    html+=`<div class="edicao">
+      <div class="edicao-cab">
+        <h2>Edição ${ed.numero}</h2>
+        <span class="data">Encerrada em ${dataBR(ed.encerrada_em)}</span>
+      </div>`;
+    ed.premios.forEach(p=>{
+      html+=`<div class="ganhador">
+        <div class="ico">${p.emoji}</div>
+        <div class="corpo">
+          <div class="rot">${p.rotulo}</div>
+          <div class="desc">${escapar(p.descricao)}</div>`;
+      if(p.vencedor){
+        html+=`<div class="nome"><span class="cup">Cupom ${p.vencedor.numero}</span>`+
+              `${escapar(p.vencedor.nome)} - ${p.vencedor.telefone}</div>`;
+      }
+      html+=`</div></div>`;
+    });
+    const b=ed.bonus;
+    html+=`<div class="ganhador">
+      <div class="ico">${b.emoji}</div>
+      <div class="corpo">
+        <div class="rot">${b.rotulo}</div>`;
+    if(b.lideres && b.lideres.length){
+      const nomes=b.lideres.map(l=>`${escapar(l.nome)} - ${l.telefone}`).join(' e ');
+      html+=`<div class="nome"><span class="cup">${b.cupons} cupons</span>${nomes}</div>`;
+    }
+    html+=`</div></div></div>`;
+  });
+  lista.innerHTML=html;
+}
+carregar();
+</script>
+</body>
+</html>

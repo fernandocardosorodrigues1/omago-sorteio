@@ -1,0 +1,13 @@
+# dependencias instaladas
+node_modules/
+
+# dados locais - NUNCA subir (contem cupons, senha e historico)
+data/
+
+# logs
+*.log
+npm-debug.log*
+
+# sistema
+.DS_Store
+Thumbs.db

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f5132">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>Painel · Sorteio de Cupons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --verde-escuro:#0f5132; --verde-medio:#15663f; --verde-claro:#1a7d4d;
+    --verde-suave:#e8f3ed; --verde-badge:#d1f0df;
+    --tinta:#16201a; --tinta-suave:#5b6b62; --branco:#ffffff;
+    --fundo:#f4f6f5; --borda:#e2e8e4; --vermelho:#c0392b; --ouro:#caa23a;
+    --sombra-cartao:0 20px 50px -12px rgba(15,81,50,.18);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+    background:var(--fundo);color:var(--tinta);
+    -webkit-font-smoothing:antialiased;line-height:1.55;min-height:100vh;
+  }
+  h1,h2,h3{font-family:'Sora',sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:28px 18px 80px}
+  .cartao{
+    background:var(--branco);border:1px solid var(--borda);
+    border-radius:18px;padding:22px;margin-bottom:18px;box-shadow:var(--sombra-cartao);
+  }
+  h2{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:15px}
+  label{display:block;font-size:13px;font-weight:600;color:var(--tinta-suave);margin:0 0 6px}
+  input{
+    width:100%;font-family:inherit;font-size:15px;color:var(--tinta);
+    background:var(--branco);border:1.5px solid var(--borda);
+    border-radius:11px;padding:11px 13px;outline:none;transition:border-color .2s;
+  }
+  input:focus{border-color:var(--verde-claro)}
+  .btn{
+    font-family:inherit;font-weight:700;font-size:14.5px;cursor:pointer;
+    border:none;border-radius:11px;padding:11px 17px;color:#fff;
+    background:linear-gradient(150deg,var(--verde-claro),var(--verde-escuro));
+    transition:transform .12s,filter .2s;
+  }
+  .btn:hover{filter:brightness(1.07)}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+  .btn.sec{background:var(--verde-suave);color:var(--verde-escuro)}
+  .btn.perigo{background:#fff;color:var(--vermelho);border:1.5px solid #e8c4bf}
+  .btn.mini{font-size:12.5px;padding:7px 12px;border-radius:9px}
+  .aviso{font-size:13px;margin-top:9px;min-height:18px;font-weight:600}
+  .aviso.erro{color:var(--vermelho)} .aviso.ok{color:var(--verde-medio)}
+
+  /* ---- login ---- */
+  #login{max-width:380px;margin:8vh auto 0}
+  .logo{
+    width:50px;height:50px;border-radius:14px;margin:0 auto 14px;
+    background:linear-gradient(150deg,var(--verde-claro),var(--verde-escuro));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 18px -6px rgba(15,81,50,.5);
+  }
+  .logo svg{width:26px;height:26px;stroke:#fff}
+  #login h1{font-size:23px;font-weight:800;text-align:center;margin-bottom:4px}
+  #login .sub{text-align:center;color:var(--tinta-suave);font-size:14px;margin-bottom:20px}
+
+  /* ---- topo painel ---- */
+  .topo{display:flex;justify-content:space-between;align-items:center;
+    gap:12px;margin-bottom:20px}
+  .topo .ident{display:flex;align-items:center;gap:12px}
+  .topo .logo{margin:0;width:44px;height:44px}
+  .topo h1{font-size:20px;font-weight:800;line-height:1.1}
+  .topo .ident p{font-size:12.5px;color:var(--tinta-suave)}
+
+  /* ---- stats ---- */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+  .stat{background:var(--branco);border:1px solid var(--borda);
+    border-radius:14px;padding:15px;box-shadow:var(--sombra-cartao)}
+  .stat .n{font-family:'Sora',sans-serif;font-weight:800;font-size:27px;
+    color:var(--verde-escuro)}
+  .stat .l{color:var(--tinta-suave);font-size:11.5px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.05em}
+
+  /* ---- sorteio ---- */
+  .visor-area{text-align:center;padding:8px 0 16px;border-bottom:1px solid var(--borda);
+    margin-bottom:16px}
+  .visor{
+    font-family:'Sora',sans-serif;font-weight:800;font-size:62px;line-height:1;
+    letter-spacing:-.02em;color:var(--verde-escuro);min-height:64px;
+  }
+  .visor.girando{color:var(--ouro)}
+  .visor-label{font-size:14px;color:var(--tinta-suave);font-weight:600;margin-top:8px;
+    min-height:20px}
+  .premio-linha{
+    display:flex;gap:12px;align-items:center;padding:13px;
+    background:var(--fundo);border:1px solid var(--borda);
+    border-radius:13px;margin-bottom:10px;
+  }
+  .premio-linha.ganho{background:var(--verde-suave);border-color:var(--verde-badge)}
+  .premio-linha .ico{font-size:25px;flex-shrink:0}
+  .premio-linha .corpo{flex:1;min-width:0}
+  .premio-linha .rot{font-family:'Sora',sans-serif;font-weight:700;font-size:14.5px}
+  .premio-linha .desc{font-size:12.5px;color:var(--tinta-suave)}
+  .premio-linha .venc{font-size:13px;margin-top:3px;color:var(--verde-escuro)}
+  .premio-linha .venc b{font-weight:700}
+  .premio-linha .venc .cup{background:var(--ouro);color:#2a2300;font-weight:700;
+    font-size:11px;padding:1px 7px;border-radius:6px;margin-right:5px}
+  .premio-linha .btn{flex-shrink:0}
+
+  /* ---- formulario ---- */
+  .linha{display:flex;gap:12px;flex-wrap:wrap}
+  .linha > div{flex:1;min-width:130px}
+  .acoes{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+
+  /* ---- tabela ---- */
+  .filtro{margin-bottom:12px}
+  .tabela{width:100%;border-collapse:collapse;font-size:14px}
+  .tabela th{text-align:left;color:var(--tinta-suave);font-weight:700;font-size:11.5px;
+    text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;
+    border-bottom:2px solid var(--borda)}
+  .tabela td{padding:9px 10px;border-bottom:1px solid var(--fundo)}
+  .tabela tr:hover td{background:var(--verde-suave)}
+  .tabela .cnum{font-family:'Sora',sans-serif;font-weight:800;color:var(--verde-escuro)}
+  .vazio{color:var(--tinta-suave);text-align:center;padding:22px;font-size:14px}
+
+  /* historico */
+  .hist-edicao{background:var(--fundo);border:1px solid var(--borda);
+    border-radius:12px;padding:13px 15px;margin-bottom:10px}
+  .hist-cab{display:flex;justify-content:space-between;align-items:baseline;
+    gap:8px;flex-wrap:wrap;margin-bottom:8px;font-family:'Sora',sans-serif}
+  .hist-cab b{font-size:15px}
+  .hist-cab span{font-size:12px;color:var(--tinta-suave);font-weight:600}
+  .hist-linha{font-size:13px;padding:3px 0;color:var(--tinta)}
+  .hist-linha b{font-weight:700}
+  .hist-vazio{color:var(--tinta-suave);font-size:14px;text-align:center;padding:18px}
+
+  #confete{position:fixed;inset:0;pointer-events:none;z-index:80}
+
+  @media(max-width:560px){
+    .visor{font-size:50px}
+    .tabela .telCol{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login" class="wrap" style="display:none">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  </div>
+  <h1>Painel do Sorteio</h1>
+  <div class="sub">Entre com sua senha para gerenciar.</div>
+  <div class="cartao">
+    <label>Senha de acesso</label>
+    <input id="senha" type="password" placeholder="Digite a senha"
+           onkeydown="if(event.key==='Enter')entrar()">
+    <div class="acoes"><button class="btn" style="flex:1" onclick="entrar()">Entrar</button></div>
+    <div class="aviso erro" id="avisoLogin"></div>
+  </div>
+</div>
+
+<!-- ===== PAINEL ===== -->
+<div id="painel" class="wrap" style="display:none">
+
+  <div class="topo">
+    <div class="ident">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4Z"/>
+          <path d="M9 6v2M9 12v2M9 16v2"/>
+        </svg>
+      </div>
+      <div><h1>Painel do Sorteio</h1><p>Gestão de cupons</p></div>
+    </div>
+    <button class="btn sec mini" onclick="sair()">Sair</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="stOcup">0</div><div class="l">Distribuídos</div></div>
+    <div class="stat"><div class="n" id="stLivre">0</div><div class="l">Disponíveis</div></div>
+    <div class="stat"><div class="n" id="stTotal">0</div><div class="l">Total</div></div>
+  </div>
+
+  <!-- SORTEIO -->
+  <div class="cartao">
+    <h2>🎉 Sorteio &nbsp;<span id="edicaoAtual" style="font-size:13px;font-weight:600;color:var(--tinta-suave)">Edição 1</span></h2>
+    <div class="visor-area">
+      <div class="visor" id="visor">—</div>
+      <div class="visor-label" id="visorLabel">Pronto para sortear</div>
+    </div>
+    <div id="listaPremios"></div>
+    <div class="acoes" style="margin-top:14px">
+      <button class="btn" onclick="encerrarEdicao()">🏁 Encerrar e arquivar sorteio</button>
+      <button class="btn perigo" onclick="resetarSorteio()">Limpar resultados</button>
+    </div>
+    <div class="aviso erro" id="avisoSorteio"></div>
+  </div>
+
+  <!-- ADICIONAR / EDITAR -->
+  <div class="cartao">
+    <h2 id="tituloForm">Adicionar cupom</h2>
+    <div class="linha">
+      <div>
+        <label>Número do cupom (1 a 100)</label>
+        <input id="fNumero" type="number" min="1" max="100" placeholder="Ex.: 4">
+      </div>
+      <div>
+        <label>4 últimos dígitos do telefone</label>
+        <input id="fTel" type="text" inputmode="numeric" maxlength="4" placeholder="Ex.: 1234">
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label>Nome do cliente</label>
+      <input id="fNome" type="text" placeholder="Nome completo">
+    </div>
+    <div class="acoes">
+      <button class="btn" onclick="salvarCupom()">Salvar cupom</button>
+      <button class="btn sec" onclick="limparForm()">Limpar campos</button>
+      <button class="btn sec" onclick="proximoLivre()">Sugerir nº livre</button>
+    </div>
+    <div class="aviso" id="avisoForm"></div>
+  </div>
+
+  <!-- LISTA -->
+  <div class="cartao">
+    <h2>Cupons cadastrados</h2>
+    <input class="filtro" id="filtro" type="text"
+           placeholder="Filtrar por nome ou número..." oninput="renderTabela()">
+    <div style="overflow-x:auto">
+      <table class="tabela">
+        <thead><tr>
+          <th>Cupom</th><th>Nome</th><th class="telCol">Telefone</th><th></th>
+        </tr></thead>
+        <tbody id="corpoTabela"></tbody>
+      </table>
+    </div>
+    <div class="acoes">
+      <a class="btn sec" href="/api/admin/exportar">⬇ Baixar planilha (CSV)</a>
+    </div>
+  </div>
+
+  <!-- HISTORICO -->
+  <div class="cartao">
+    <h2>📚 Histórico de edições</h2>
+    <div id="listaHistorico"></div>
+  </div>
+
+</div>
+
+<canvas id="confete"></canvas>
+
+<script>
+let CUPONS=[], GRADE=null;
+
+async function api(rota,metodo='GET',corpo){
+  const opt={method:metodo,headers:{'Content-Type':'application/json'}};
+  if(corpo) opt.body=JSON.stringify(corpo);
+  const r=await fetch(rota,opt);
+  let j={}; try{ j=await r.json(); }catch(e){}
+  return {status:r.status,dados:j};
+}
+function escapar(s){
+  return String(s).replace(/[&<>"]/g,m=>(
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+}
+function avisar(id,txt,tipo){
+  const e=document.getElementById(id);
+  e.textContent=txt; e.className='aviso '+(tipo||'');
+  if(tipo==='ok') setTimeout(()=>{e.textContent='';},3000);
+}
+
+/* ---- login ---- */
+async function entrar(){
+  const r=await api('/api/login','POST',{senha:document.getElementById('senha').value});
+  if(r.status===200) abrirPainel();
+  else avisar('avisoLogin',r.dados.erro||'Erro ao entrar.','erro');
+}
+async function sair(){
+  if(!confirm('Deseja sair do painel?')) return;
+  await api('/api/logout','POST'); location.reload();
+}
+
+async function abrirPainel(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('painel').style.display='block';
+  await carregar();
+}
+async function carregar(){
+  const r=await api('/api/admin/cupons');
+  if(r.status!==200){ location.reload(); return; }
+  CUPONS=r.dados.cupons;
+  document.getElementById('stOcup').textContent=r.dados.ocupados;
+  document.getElementById('stLivre').textContent=r.dados.livres;
+  document.getElementById('stTotal').textContent=r.dados.total;
+  document.getElementById('edicaoAtual').textContent='Edição '+(r.dados.edicao||1);
+  const g=await api('/api/admin/sorteio');
+  GRADE=g.dados;
+  renderSorteio();
+  renderTabela();
+  renderHistorico();
+}
+
+/* ---- sorteio ---- */
+function renderSorteio(){
+  const lista=document.getElementById('listaPremios');
+  let html='';
+  GRADE.premios.forEach(p=>{
+    const ganho=!!p.vencedor;
+    html+=`<div class="premio-linha ${ganho?'ganho':''}">
+      <div class="ico">${p.emoji}</div>
+      <div class="corpo">
+        <div class="rot">${p.rotulo}</div>
+        <div class="desc">${p.descricao}</div>`;
+    if(ganho){
+      html+=`<div class="venc"><span class="cup">Cupom ${p.vencedor.numero}</span>
+        <b>${escapar(p.vencedor.nome)}</b> · final ${p.vencedor.telefone}</div>`;
+    }
+    html+=`</div>`;
+    if(!ganho){
+      html+=`<button class="btn mini" onclick="sortearPremio(${p.posicao})">Sortear</button>`;
+    }
+    html+=`</div>`;
+  });
+  const b=GRADE.bonus;
+  html+=`<div class="premio-linha ${b.revelado?'ganho':''}">
+    <div class="ico">${b.emoji}</div>
+    <div class="corpo">
+      <div class="rot">${b.rotulo}</div>
+      <div class="desc">${b.descricao}</div>`;
+  if(b.revelado && b.lideres.length){
+    const nomes=b.lideres.map(l=>`<b>${escapar(l.nome)}</b> · final ${l.telefone}`).join(' e ');
+    html+=`<div class="venc"><span class="cup">${b.cupons} cupons</span>${nomes}</div>`;
+  }
+  html+=`</div>`;
+  if(!b.revelado){
+    html+=`<button class="btn mini sec" onclick="revelarBonus()">Revelar</button>`;
+  }
+  html+=`</div>`;
+  lista.innerHTML=html;
+}
+
+async function sortearPremio(pos){
+  document.getElementById('avisoSorteio').textContent='';
+  document.querySelectorAll('#listaPremios .btn').forEach(b=>b.disabled=true);
+  const r=await api('/api/admin/sortear','POST',{premio:pos});
+  if(r.status!==200){
+    avisar('avisoSorteio',r.dados.erro||'Erro ao sortear.','erro');
+    document.querySelectorAll('#listaPremios .btn').forEach(b=>b.disabled=false);
+    return;
+  }
+  const rotulos={1:'1º Prêmio',2:'2º Prêmio',3:'3º Prêmio'};
+  animarVisor(r.dados.numero,'Sorteando '+rotulos[pos]+'...',async()=>{
+    document.getElementById('visorLabel').innerHTML=
+      `${rotulos[pos]} → <b>${escapar(r.dados.nome)}</b> · final ${r.dados.telefone}`;
+    soltarConfete();
+    await carregar();
+  });
+}
+async function revelarBonus(){
+  document.getElementById('avisoSorteio').textContent='';
+  const r=await api('/api/admin/revelar-bonus','POST');
+  if(r.status!==200){ avisar('avisoSorteio',r.dados.erro||'Erro.','erro'); return; }
+  document.getElementById('visor').textContent='🌟';
+  const nomes=r.dados.lideres.map(l=>l.nome).join(' e ');
+  document.getElementById('visorLabel').innerHTML=
+    `Bônus (${r.dados.cupons} cupons) → <b>${escapar(nomes)}</b>`;
+  soltarConfete();
+  await carregar();
+}
+async function resetarSorteio(){
+  if(!confirm('Limpar TODOS os resultados do sorteio? Isso apaga os 3 prêmios e o bônus.')) return;
+  await api('/api/admin/resetar-sorteio','POST');
+  document.getElementById('visor').textContent='—';
+  document.getElementById('visorLabel').textContent='Pronto para sortear';
+  await carregar();
+}
+
+function dataBR(iso){
+  try{
+    return new Date(iso).toLocaleDateString('pt-BR',
+      {day:'2-digit',month:'2-digit',year:'numeric'});
+  }catch(e){ return ''; }
+}
+
+async function encerrarEdicao(){
+  if(!confirm('ENCERRAR a edição atual?\n\n'+
+    'Isto vai ARQUIVAR este sorteio no histórico e ZERAR a grade — '+
+    'os 100 cupons serão apagados para começar uma edição nova.')) return;
+  if(!confirm('Tem certeza? Esta ação não pode ser desfeita.\n\n'+
+    'Clique OK para encerrar e arquivar.')) return;
+  const r=await api('/api/admin/encerrar','POST');
+  if(r.status===200){
+    document.getElementById('visor').textContent='—';
+    document.getElementById('visorLabel').textContent='Pronto para sortear';
+    alert('Edição '+r.dados.numero+' arquivada com sucesso!\n'+
+      'A grade foi zerada para a nova edição.');
+    await carregar();
+  }else{
+    avisar('avisoSorteio',r.dados.erro||'Erro ao encerrar.','erro');
+  }
+}
+
+async function renderHistorico(){
+  const div=document.getElementById('listaHistorico');
+  const r=await api('/api/admin/historico');
+  if(r.status!==200 || !r.dados.edicoes || r.dados.edicoes.length===0){
+    div.innerHTML='<div class="hist-vazio">Nenhuma edição encerrada ainda.</div>';
+    return;
+  }
+  div.innerHTML=r.dados.edicoes.map(ed=>{
+    let g='';
+    ed.premios.forEach(p=>{
+      g+=`<div class="hist-linha">${p.emoji} <b>${p.rotulo}:</b> `+
+         (p.vencedor
+           ?`Cupom ${p.vencedor.numero} — ${escapar(p.vencedor.nome)} - ${p.vencedor.telefone}`
+           :'—')+`</div>`;
+    });
+    const b=ed.bonus;
+    const bn=(b.lideres&&b.lideres.length)
+      ?b.lideres.map(l=>escapar(l.nome)+' - '+l.telefone).join(' e '):'—';
+    g+=`<div class="hist-linha">${b.emoji} <b>${b.rotulo}:</b> ${bn} (${b.cupons} cupons)</div>`;
+    return `<div class="hist-edicao">
+      <div class="hist-cab"><b>Edição ${ed.numero}</b>
+        <span>${ed.total_cupons} cupons · ${dataBR(ed.encerrada_em)}</span></div>
+      ${g}</div>`;
+  }).join('');
+}
+
+function animarVisor(alvo,label,callback){
+  const visor=document.getElementById('visor');
+  document.getElementById('visorLabel').textContent=label;
+  visor.classList.add('girando');
+  const dur=2600, inicio=performance.now();
+  function girar(now){
+    const t=now-inicio;
+    if(t<dur){
+      const lento=Math.pow(t/dur,3);
+      if(Math.random()>lento*0.72) visor.textContent=1+Math.floor(Math.random()*100);
+      requestAnimationFrame(girar);
+    }else{
+      visor.textContent=alvo;
+      visor.classList.remove('girando');
+      callback();
+    }
+  }
+  requestAnimationFrame(girar);
+}
+
+/* ---- confete ---- */
+function soltarConfete(){
+  const cv=document.getElementById('confete'),cx=cv.getContext('2d');
+  cv.width=innerWidth; cv.height=innerHeight;
+  const cores=['#0f5132','#1a7d4d','#caa23a','#37b87f','#d1f0df'];
+  const ps=[];
+  for(let i=0;i<150;i++) ps.push({
+    x:innerWidth/2,y:innerHeight*0.32,
+    vx:(Math.random()-0.5)*15,vy:Math.random()*-14-4,
+    g:0.32+Math.random()*0.2,s:5+Math.random()*7,
+    r:Math.random()*6,vr:(Math.random()-0.5)*0.4,
+    c:cores[Math.floor(Math.random()*cores.length)]});
+  let f=0;
+  (function anim(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{
+      p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.r+=p.vr;
+      cx.save(); cx.translate(p.x,p.y); cx.rotate(p.r);
+      cx.fillStyle=p.c; cx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6); cx.restore();
+    });
+    if(++f<150) requestAnimationFrame(anim);
+    else cx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+
+/* ---- tabela ---- */
+function renderTabela(){
+  const f=(document.getElementById('filtro').value||'').toLowerCase();
+  const corpo=document.getElementById('corpoTabela');
+  const lista=CUPONS.filter(c=>
+    !f || c.nome.toLowerCase().includes(f) || String(c.numero).includes(f));
+  if(lista.length===0){
+    corpo.innerHTML='<tr><td colspan="4" class="vazio">Nenhum cupom encontrado.</td></tr>';
+    return;
+  }
+  corpo.innerHTML=lista.map(c=>`
+    <tr>
+      <td class="cnum">${c.numero}</td>
+      <td>${escapar(c.nome)}</td>
+      <td class="telCol">${c.telefone}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn sec mini" onclick="editar(${c.numero})">Editar</button>
+        <button class="btn perigo mini" onclick="remover(${c.numero})">Remover</button>
+      </td>
+    </tr>`).join('');
+}
+
+/* ---- formulario ---- */
+function editar(numero){
+  const c=CUPONS.find(x=>x.numero===numero); if(!c) return;
+  document.getElementById('fNumero').value=c.numero;
+  document.getElementById('fNome').value=c.nome;
+  document.getElementById('fTel').value=c.telefone;
+  document.getElementById('tituloForm').textContent='Editar cupom Nº '+c.numero;
+  document.getElementById('avisoForm').textContent='';
+  scrollTo({top:document.getElementById('tituloForm').offsetTop-90,behavior:'smooth'});
+}
+function limparForm(){
+  ['fNumero','fNome','fTel'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('tituloForm').textContent='Adicionar cupom';
+  document.getElementById('avisoForm').textContent='';
+}
+function proximoLivre(){
+  const usados=new Set(CUPONS.map(c=>c.numero));
+  for(let n=1;n<=100;n++) if(!usados.has(n)){
+    document.getElementById('fNumero').value=n; return; }
+  avisar('avisoForm','Todos os 100 cupons já estão preenchidos.','erro');
+}
+async function salvarCupom(){
+  const r=await api('/api/admin/cupom','POST',{
+    numero:document.getElementById('fNumero').value,
+    nome:document.getElementById('fNome').value,
+    telefone:document.getElementById('fTel').value
+  });
+  if(r.status===200){
+    avisar('avisoForm','Cupom salvo com sucesso.','ok');
+    limparForm(); await carregar();
+  }else avisar('avisoForm',r.dados.erro||'Erro ao salvar.','erro');
+}
+async function remover(numero){
+  if(!confirm('Remover o cupom Nº '+numero+'?')) return;
+  await api('/api/admin/limpar','POST',{numero});
+  await carregar();
+}
+
+/* ---- inicio ---- */
+(async()=>{
+  const r=await api('/api/admin/cupons');
+  if(r.status===200) abrirPainel();
+  else document.getElementById('login').style.display='block';
+})();
+</script>
+</body>
+</html>

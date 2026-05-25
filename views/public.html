@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f5132">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>Sorteio de Cupons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --verde-escuro:#0f5132; --verde-medio:#15663f; --verde-claro:#1a7d4d;
+    --verde-suave:#e8f3ed; --verde-badge:#d1f0df;
+    --tinta:#16201a; --tinta-suave:#5b6b62; --branco:#ffffff;
+    --fundo:#f4f6f5; --borda:#e2e8e4;
+    --vermelho:#c0392b; --vermelho-suave:#fdecea; --vermelho-borda:#e3a59d;
+    --sombra-cartao:0 20px 50px -12px rgba(15,81,50,.18);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+    background:var(--fundo); color:var(--tinta);
+    -webkit-font-smoothing:antialiased; line-height:1.55;
+  }
+  h1,h2,h3{font-family:'Sora',sans-serif}
+  .wrap{max-width:1060px;margin:0 auto;padding:30px 20px 70px}
+
+  /* ---- cabecalho ---- */
+  .topo{display:flex;align-items:center;gap:13px;margin-bottom:22px}
+  .logo{
+    width:46px;height:46px;border-radius:13px;flex-shrink:0;
+    background:linear-gradient(150deg,var(--verde-claro),var(--verde-escuro));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 18px -6px rgba(15,81,50,.5);
+  }
+  .logo svg{width:24px;height:24px;stroke:#fff}
+  .topo h1{font-size:21px;font-weight:800;letter-spacing:-.01em;line-height:1.1}
+  .topo p{font-size:13px;color:var(--tinta-suave)}
+
+  /* ---- painel de premios (recolhivel) ---- */
+  .premios{
+    background:linear-gradient(155deg,var(--verde-medio),var(--verde-escuro));
+    border-radius:20px;color:#eaf3ee;box-shadow:var(--sombra-cartao);
+    position:relative;overflow:hidden;
+  }
+  .premios::after{
+    content:"";position:absolute;width:280px;height:280px;border-radius:50%;
+    background:rgba(255,255,255,.05);top:-150px;right:-90px;
+  }
+  .premios-toggle{
+    width:100%;border:none;background:transparent;cursor:pointer;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:15px 20px;font-family:inherit;position:relative;z-index:1;
+  }
+  .premios-toggle-txt{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .badge{
+    display:inline-block;font-size:11px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:#bfe6cf;
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);
+    padding:6px 12px;border-radius:99px;
+  }
+  .premios-hint{font-size:12px;color:#84b095;font-style:italic}
+  .premios:not(.recolhido) .premios-hint{display:none}
+  .chevron{width:20px;height:20px;flex-shrink:0;stroke:#bfe6cf;
+    transition:transform .25s}
+  .premios:not(.recolhido) .chevron{transform:rotate(180deg)}
+  .premios-corpo{padding:3px 22px 24px;position:relative;z-index:1}
+  .premios.recolhido .premios-corpo{display:none}
+  .premios h2{font-size:21px;font-weight:800;line-height:1.15;color:#fff;
+    margin-bottom:3px;letter-spacing:-.01em}
+  .premios .legenda-topo{font-size:13px;color:#a9cdb8;margin-bottom:16px}
+  .lista-premios{display:flex;flex-direction:column;gap:10px}
+  .premio{
+    display:flex;gap:13px;align-items:flex-start;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);
+    border-radius:14px;padding:13px 15px;
+  }
+  .premio .ico{font-size:25px;line-height:1.1;flex-shrink:0}
+  .premio .corpo{flex:1;min-width:0}
+  .premio .rot{font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:#fff}
+  .premio .desc{font-size:13px;color:#a9cdb8}
+
+  /* ---- cartoes ---- */
+  .cartao{
+    background:var(--branco);border:1px solid var(--borda);
+    border-radius:18px;padding:20px 22px;box-shadow:var(--sombra-cartao);
+    margin-top:16px;
+  }
+  .contador .num{font-family:'Sora',sans-serif;font-weight:800;font-size:34px;
+    line-height:1;letter-spacing:-.02em}
+  .contador .num span{color:var(--tinta-suave);font-size:19px;font-weight:700}
+  .contador .rot{color:var(--tinta-suave);font-size:13px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+  .barra{height:9px;border-radius:99px;background:var(--verde-suave);
+    margin-top:13px;overflow:hidden}
+  .barra > i{display:block;height:100%;border-radius:99px;
+    background:linear-gradient(90deg,var(--verde-claro),var(--verde-medio));
+    transition:width .8s cubic-bezier(.2,.8,.2,1)}
+  .expectativa{
+    margin-top:12px;font-size:13.5px;font-weight:600;color:var(--verde-escuro);
+    background:var(--verde-suave);border:1px solid var(--verde-badge);
+    border-radius:11px;padding:10px 13px;text-align:center;
+  }
+  .expectativa.urgente{
+    background:var(--vermelho-suave);border-color:var(--vermelho-borda);
+    color:var(--vermelho);
+  }
+  .carregando{
+    grid-column:1/-1;text-align:center;padding:36px 12px;
+    color:var(--tinta-suave);font-size:14px;font-weight:600;
+  }
+
+  /* busca */
+  .busca{margin-top:18px}
+  .busca-campo{position:relative}
+  .busca-campo input{
+    width:100%;font-family:inherit;font-size:15px;color:var(--tinta);
+    background:var(--branco);border:1.5px solid var(--borda);
+    border-radius:13px;padding:13px 15px 13px 44px;outline:none;
+    transition:border-color .2s;
+  }
+  .busca-campo input:focus{border-color:var(--verde-claro)}
+  .busca-campo svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);
+    width:18px;height:18px;stroke:var(--tinta-suave)}
+  .busca .achou{margin-top:7px;font-size:13px;color:var(--verde-medio);
+    font-weight:600;min-height:18px;padding-left:3px}
+
+  /* legenda */
+  .legenda{display:flex;gap:18px;margin:20px 0 12px;flex-wrap:wrap;
+    font-size:13px;color:var(--tinta-suave);font-weight:500}
+  .legenda span{display:flex;align-items:center;gap:7px}
+  .pip{width:14px;height:14px;border-radius:5px;display:inline-block}
+  .pip.ocup{background:var(--vermelho-suave);border:1.5px solid var(--vermelho-borda)}
+  .pip.livre{background:var(--verde-suave);border:1.5px solid var(--verde-claro)}
+
+  /* grade */
+  .grade{display:grid;grid-template-columns:repeat(10,1fr);gap:9px}
+  .cel{
+    position:relative;aspect-ratio:1/1;border-radius:11px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Sora',sans-serif;font-weight:700;
+    font-size:clamp(13px,2.2vw,18px);cursor:pointer;
+    border:1.5px solid var(--borda);background:#fff;color:#b9c2bc;
+    transition:transform .14s ease,box-shadow .2s,opacity .2s;
+    animation:surge .45s backwards;
+  }
+  @keyframes surge{from{opacity:0;transform:translateY(7px) scale(.92)}}
+  /* LIVRE = verde (disponivel) */
+  .cel.livre{
+    background:var(--verde-suave);border-color:var(--verde-claro);
+    color:var(--verde-escuro);
+  }
+  .cel.livre:hover{transform:translateY(-3px);
+    box-shadow:0 9px 20px -6px rgba(26,125,77,.4)}
+  /* OCUPADO = vermelho (cupom ja distribuido) */
+  .cel.ocupado{
+    background:var(--vermelho-suave);border-color:var(--vermelho-borda);
+    color:var(--vermelho);
+  }
+  .cel.ocupado:hover{transform:translateY(-3px);
+    box-shadow:0 9px 20px -6px rgba(192,57,43,.38)}
+  .cel.apagado{opacity:.26}
+  .cel.match{
+    box-shadow:0 0 0 3px var(--tinta);transform:translateY(-3px);z-index:2;
+  }
+
+  /* tooltip */
+  #tip{
+    position:fixed;pointer-events:none;z-index:60;white-space:nowrap;
+    background:var(--branco);border:1px solid var(--borda);
+    border-radius:10px;padding:7px 12px;
+    font-family:'Sora',sans-serif;font-weight:600;font-size:13px;color:var(--tinta);
+    box-shadow:0 12px 30px -8px rgba(15,81,50,.35);
+    opacity:0;transform:translateY(5px);transition:opacity .12s,transform .12s;
+  }
+  #tip.on{opacity:1;transform:translateY(0)}
+  #tip::after{content:"";position:absolute;left:50%;bottom:-6px;
+    width:10px;height:10px;background:var(--branco);
+    border-right:1px solid var(--borda);border-bottom:1px solid var(--borda);
+    transform:translateX(-50%) rotate(45deg)}
+
+  /* ---- popup de reserva ---- */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(15,32,26,.55);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+    opacity:0;pointer-events:none;transition:opacity .2s;
+  }
+  .modal-overlay.aberto{opacity:1;pointer-events:auto}
+  .modal-card{
+    background:var(--branco);border-radius:22px;padding:30px 26px 24px;
+    max-width:380px;width:100%;text-align:center;position:relative;
+    box-shadow:0 30px 70px -15px rgba(15,81,50,.55);
+    transform:scale(.9) translateY(12px);
+    transition:transform .25s cubic-bezier(.2,.9,.3,1.25);
+  }
+  .modal-overlay.aberto .modal-card{transform:scale(1) translateY(0)}
+  .modal-x{
+    position:absolute;top:13px;right:13px;width:32px;height:32px;
+    border:none;background:var(--fundo);border-radius:50%;cursor:pointer;
+    font-size:19px;color:var(--tinta-suave);line-height:1;
+  }
+  .modal-ico{
+    width:62px;height:62px;border-radius:18px;margin:0 auto 14px;
+    background:linear-gradient(150deg,var(--verde-claro),var(--verde-escuro));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 22px -6px rgba(15,81,50,.5);
+  }
+  .modal-ico svg{width:30px;height:30px}
+  .modal-cupom{font-family:'Sora',sans-serif;font-weight:800;font-size:29px;
+    color:var(--verde-escuro);line-height:1.1}
+  .modal-status{font-family:'Sora',sans-serif;font-weight:700;font-size:16px;
+    color:var(--tinta);margin-bottom:11px}
+  .modal-texto{font-size:14.5px;color:var(--tinta-suave);margin-bottom:14px}
+  .modal-texto b{color:var(--verde-escuro)}
+  .modal-instrucao{
+    background:var(--verde-suave);border:1px solid var(--verde-badge);
+    border-radius:13px;padding:13px 14px;font-size:13.5px;font-weight:600;
+    color:var(--verde-escuro);margin-bottom:18px;
+  }
+  .btn-modal{
+    width:100%;font-family:'Sora',sans-serif;font-weight:700;font-size:15px;
+    cursor:pointer;border:none;border-radius:13px;padding:13px;color:#fff;
+    background:linear-gradient(150deg,var(--verde-claro),var(--verde-escuro));
+    transition:filter .2s;
+  }
+  .btn-modal:hover{filter:brightness(1.08)}
+
+  footer{margin-top:38px;text-align:center;color:var(--tinta-suave);font-size:13px}
+  footer a{color:var(--verde-medio);text-decoration:none;font-weight:600}
+  footer .versao{margin-top:7px;font-size:11.5px;color:#aab1ab;font-weight:500}
+
+  @media(max-width:680px){
+    .wrap{padding:22px 14px 56px}
+    .grade{grid-template-columns:repeat(5,1fr);gap:7px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topo">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4Z"/>
+        <path d="M9 6v2M9 12v2M9 16v2"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Sorteio de Cupons</h1>
+      <p>Cada indicação fechada vale um cupom — e uma chance de ganhar.</p>
+    </div>
+  </div>
+
+  <!-- PREMIOS (sempre recolhido por padrao) -->
+  <div class="premios recolhido" id="premiosBox">
+    <button class="premios-toggle" onclick="togglePremios()" aria-label="Mostrar prêmios">
+      <span class="premios-toggle-txt">
+        <span class="badge">🎁 Prêmios do sorteio</span>
+        <span class="premios-hint">toque para ver</span>
+      </span>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div class="premios-corpo">
+      <h2>Concorra a prêmios de verdade</h2>
+      <p class="legenda-topo">Os 3 primeiros prêmios são sorteados. O bônus vai para quem mais indicou.</p>
+      <div class="lista-premios" id="listaPremios"></div>
+    </div>
+  </div>
+
+  <div class="cartao contador">
+    <div class="num" id="num">0 <span>/ 100</span></div>
+    <div class="rot">Cupons distribuídos</div>
+    <div class="barra"><i id="barra" style="width:0%"></i></div>
+    <div class="expectativa" id="expectativa"></div>
+  </div>
+
+  <div class="busca">
+    <div class="busca-campo">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="busca" type="text" placeholder="Encontre seu nome..." autocomplete="off">
+    </div>
+    <div class="achou" id="achou"></div>
+  </div>
+
+  <div class="legenda">
+    <span><i class="pip ocup"></i> Cupom distribuído</span>
+    <span><i class="pip livre"></i> Disponível — toque para reservar</span>
+  </div>
+
+  <div class="grade" id="grade"><div class="carregando">Carregando cupons…</div></div>
+
+  <footer>
+    <div class="versao">Sorteio de Cupons · v<span id="fVersao">2.0.2</span> · Edição <span id="fEdicao">1</span></div>
+  </footer>
+</div>
+
+<div id="tip"></div>
+
+<!-- POPUP DE RESERVA -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)fecharModal()">
+  <div class="modal-card">
+    <button class="modal-x" onclick="fecharModal()" aria-label="Fechar">&times;</button>
+    <div class="modal-ico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4Z"/>
+        <path d="M9 6v2M9 12v2M9 16v2"/>
+      </svg>
+    </div>
+    <div class="modal-cupom">Cupom Nº <span id="modalNumero">0</span></div>
+    <div class="modal-status">está disponível! 🎉</div>
+    <p class="modal-texto">
+      Garanta esse número e concorra a <b>R$ 1.000,00</b> e outros prêmios do sorteio.
+    </p>
+    <div class="modal-instrucao">
+      📲 Informe este número no nosso WhatsApp para fazer a sua reserva.
+    </div>
+    <button class="btn-modal" onclick="fecharModal()">Entendi</button>
+  </div>
+</div>
+
+<script>
+const grade = document.getElementById('grade');
+const tip   = document.getElementById('tip');
+let dados = null;
+
+const semAcento = (s)=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+
+function togglePremios(){
+  document.getElementById('premiosBox').classList.toggle('recolhido');
+}
+function abrirModal(numero){
+  document.getElementById('modalNumero').textContent = numero;
+  document.getElementById('modal').classList.add('aberto');
+}
+function fecharModal(){
+  document.getElementById('modal').classList.remove('aberto');
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') fecharModal(); });
+
+async function carregar(){
+  try{
+    const r = await fetch('/api/grade',{cache:'no-store'});
+    dados = await r.json();
+    render();
+  }catch(e){}
+}
+
+function render(){
+  document.getElementById('num').innerHTML = `${dados.ocupados} <span>/ ${dados.total}</span>`;
+  document.getElementById('barra').style.width = (dados.ocupados/dados.total*100).toFixed(1)+'%';
+  document.getElementById('fVersao').textContent = dados.versao || '2.0';
+  document.getElementById('fEdicao').textContent = dados.edicao || 1;
+
+  const exp = document.getElementById('expectativa');
+  exp.classList.remove('urgente');
+  if(dados.livres === 0){
+    exp.textContent = '🎉 Os 100 cupons foram preenchidos! Sorteio em breve.';
+  }else if(dados.livres <= 10){
+    exp.textContent = `🔥 Últimos cupons! Faltam só ${dados.livres} — garanta o seu.`;
+    exp.classList.add('urgente');
+  }else{
+    exp.textContent = `⏳ O sorteio acontece quando os 100 cupons forem preenchidos — faltam ${dados.livres}!`;
+  }
+
+  renderPremios();
+
+  grade.innerHTML='';
+  dados.cupons.forEach((c,i)=>{
+    const d=document.createElement('div');
+    d.className='cel '+c.status;
+    d.textContent=c.n;
+    d.style.animationDelay=(i*6)+'ms';
+    if(c.status==='ocupado'){
+      d.dataset.tip = `${c.primeiro} - ${c.telefone}`;
+      d.dataset.nome = c.primeiro;
+      d.addEventListener('pointerenter',mostrarTip);
+      d.addEventListener('pointerleave',esconderTip);
+      d.addEventListener('click',e=>mostrarTip(e,true));
+    }else{
+      d.dataset.tip = 'Disponível';
+      d.addEventListener('pointerenter',mostrarTip);
+      d.addEventListener('pointerleave',esconderTip);
+      d.addEventListener('click',()=>{ esconderTip(); abrirModal(c.n); });
+    }
+    grade.appendChild(d);
+  });
+  filtrar();
+}
+
+function renderPremios(){
+  let html='';
+  dados.premios.forEach(p=>{
+    html+=`<div class="premio">
+      <div class="ico">${p.emoji}</div>
+      <div class="corpo">
+        <div class="rot">${p.rotulo}</div>
+        <div class="desc">${p.descricao}</div>
+      </div></div>`;
+  });
+  const b=dados.bonus;
+  html+=`<div class="premio">
+    <div class="ico">${b.emoji}</div>
+    <div class="corpo">
+      <div class="rot">${b.rotulo}</div>
+      <div class="desc">${b.descricao}</div>
+    </div></div>`;
+  document.getElementById('listaPremios').innerHTML=html;
+}
+
+function mostrarTip(ev,fixo){
+  const el=ev.currentTarget;
+  const r=el.getBoundingClientRect();
+  tip.textContent=el.dataset.tip;
+  tip.classList.add('on');
+  const x=r.left+r.width/2-tip.offsetWidth/2;
+  const y=r.top-tip.offsetHeight-11;
+  tip.style.left=Math.max(8,Math.min(x,innerWidth-tip.offsetWidth-8))+'px';
+  tip.style.top=Math.max(8,y)+'px';
+  if(fixo){ clearTimeout(tip._t); tip._t=setTimeout(esconderTip,2200); }
+}
+function esconderTip(){ tip.classList.remove('on'); }
+
+function filtrar(){
+  const termo=semAcento(document.getElementById('busca').value.trim());
+  const achou=document.getElementById('achou');
+  const cels=grade.querySelectorAll('.cel');
+  if(!termo){
+    cels.forEach(c=>c.classList.remove('match','apagado'));
+    achou.textContent=''; return;
+  }
+  let n=0;
+  cels.forEach(c=>{
+    const nome=semAcento(c.dataset.nome||'');
+    if(nome && nome.includes(termo)){
+      c.classList.add('match'); c.classList.remove('apagado'); n++;
+    }else{ c.classList.remove('match'); c.classList.add('apagado'); }
+  });
+  achou.textContent=n?`${n} cupom(ns) encontrado(s)`:'Nenhum cupom com esse nome';
+}
+
+document.getElementById('busca').addEventListener('input',filtrar);
+document.addEventListener('scroll',esconderTip,{passive:true});
+carregar();
+setInterval(carregar,25000);
+</script>
+</body>
+</html>

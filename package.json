@@ -1,0 +1,12 @@
+{
+  "name": "omago-sorteio",
+  "version": "1.0.0",
+  "description": "Sistema de sorteio de cupons - OMAGO",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1"
+  }
+}
