@@ -23,7 +23,7 @@ function abrirBanco(arquivo) {
 }
 
 /* ====== CONFIGURACOES ======================================= */
-const VERSAO       = '2.0.2';
+const VERSAO       = '2.0.4';
 const PORTA        = 3001;
 const TOTAL_CUPONS = 100;
 const NOME_MARCA   = '';
@@ -154,7 +154,10 @@ function lerCorpo(req) {
 function json(res, codigo, dados) {
   res.writeHead(codigo, {
     'Content-Type': 'application/json; charset=utf-8',
-    'X-Content-Type-Options': 'nosniff'
+    'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   });
   res.end(JSON.stringify(dados));
 }
@@ -320,7 +323,7 @@ const servidor = http.createServer(async (req, res) => {
 
     if (rota === '/api/admin/cupons' && m === 'GET') {
       const linhas = db.prepare(
-        'SELECT numero,nome,telefone FROM cupons ORDER BY numero').all();
+        'SELECT numero,nome,telefone,atualizado_em FROM cupons ORDER BY numero').all();
       return json(res, 200, {
         total: TOTAL_CUPONS, ocupados: linhas.length,
         livres: TOTAL_CUPONS - linhas.length, edicao: numeroEdicaoAtual(),
@@ -334,21 +337,57 @@ const servidor = http.createServer(async (req, res) => {
 
     if (rota === '/api/admin/cupom' && m === 'POST') {
       const c = await lerCorpo(req);
-      const numero = parseInt(c.numero, 10);
-      const nome = String(c.nome || '').trim();
+      const numero    = parseInt(c.numero, 10);
+      const nome      = String(c.nome || '').trim();
+      const operacao  = String(c.operacao || '').trim().toLowerCase(); // 'criar' | 'atualizar'
       let tel = String(c.telefone || '').replace(/\D/g, '');
+
+      // validacoes basicas (valem para criar e atualizar)
       if (!Number.isInteger(numero) || numero < 1 || numero > TOTAL_CUPONS)
         return json(res, 400, { erro: `Número deve ser entre 1 e ${TOTAL_CUPONS}.` });
-      if (!nome) return json(res, 400, { erro: 'Informe o nome do cliente.' });
+      if (!nome)
+        return json(res, 400, { erro: 'Informe o nome do cliente.' });
       if (!tel || tel.length > 4)
         return json(res, 400, { erro: 'Telefone: até 4 dígitos finais.' });
       tel = tel.padStart(4, '0');
-      db.prepare(
-        'INSERT INTO cupons (numero,nome,telefone,atualizado_em) VALUES (?,?,?,?) ' +
-        'ON CONFLICT(numero) DO UPDATE SET nome=excluded.nome, ' +
-        'telefone=excluded.telefone, atualizado_em=excluded.atualizado_em'
-      ).run(numero, nome, tel, new Date().toISOString());
-      return json(res, 200, { ok: true });
+
+      // verifica estado atual do cupom (existe ou nao)
+      const existente = db.prepare(
+        'SELECT numero,nome,telefone FROM cupons WHERE numero=?').get(numero);
+      const agora = new Date().toISOString();
+
+      if (operacao === 'criar') {
+        // CRIAR: rejeita se o numero ja esta ocupado
+        if (existente) {
+          return json(res, 409, {
+            erro: `O cupom ${numero} já está com ${existente.nome} (final ${existente.telefone}). ` +
+                  `Para alterar o nome/telefone, clique em "Editar" na lista. ` +
+                  `Para liberá-lo, clique em "Remover".`
+          });
+        }
+        db.prepare(
+          'INSERT INTO cupons (numero,nome,telefone,atualizado_em) VALUES (?,?,?,?)'
+        ).run(numero, nome, tel, agora);
+        return json(res, 200, { ok: true, modo: 'criado', numero });
+      }
+
+      if (operacao === 'atualizar') {
+        // ATUALIZAR: exige que o cupom exista; numero NUNCA muda (e PK)
+        if (!existente) {
+          return json(res, 404, {
+            erro: `O cupom ${numero} não existe. Use "Adicionar" para criar.`
+          });
+        }
+        db.prepare(
+          'UPDATE cupons SET nome=?, telefone=?, atualizado_em=? WHERE numero=?'
+        ).run(nome, tel, agora, numero);
+        return json(res, 200, { ok: true, modo: 'atualizado', numero });
+      }
+
+      // operacao ausente/invalida: rejeita explicitamente em vez de "adivinhar"
+      return json(res, 400, {
+        erro: 'Operação inválida. Use "criar" para novos cupons ou "atualizar" para editar.'
+      });
     }
 
     if (rota === '/api/admin/limpar' && m === 'POST') {

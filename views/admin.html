@@ -38,6 +38,23 @@
     border-radius:11px;padding:11px 13px;outline:none;transition:border-color .2s;
   }
   input:focus{border-color:var(--verde-claro)}
+  input[readonly]{
+    background:var(--fundo);color:var(--tinta-suave);cursor:not-allowed;
+    border-style:dashed;
+  }
+  input[readonly]:focus{border-color:var(--borda)}
+  .badge-edicao{
+    display:none;font-size:11.5px;font-weight:700;letter-spacing:.05em;
+    text-transform:uppercase;color:#7a5a00;
+    background:#fff5d6;border:1px solid #f1d780;
+    padding:5px 10px;border-radius:99px;margin-left:10px;vertical-align:middle;
+  }
+  .badge-edicao.on{display:inline-block}
+  .dica-bloqueio{
+    display:none;font-size:12px;color:var(--tinta-suave);margin-top:4px;
+    font-style:italic;
+  }
+  .dica-bloqueio.on{display:block}
   .btn{
     font-family:inherit;font-weight:700;font-size:14.5px;cursor:pointer;
     border:none;border-radius:11px;padding:11px 17px;color:#fff;
@@ -139,7 +156,7 @@
 
   @media(max-width:560px){
     .visor{font-size:50px}
-    .tabela .telCol{display:none}
+    .tabela .telCol,.tabela .dataCol{display:none}
   }
 </style>
 </head>
@@ -202,11 +219,12 @@
 
   <!-- ADICIONAR / EDITAR -->
   <div class="cartao">
-    <h2 id="tituloForm">Adicionar cupom</h2>
+    <h2 id="tituloForm">Adicionar cupom<span class="badge-edicao" id="badgeEdicao"></span></h2>
     <div class="linha">
       <div>
         <label>Número do cupom (1 a 100)</label>
         <input id="fNumero" type="number" min="1" max="100" placeholder="Ex.: 4">
+        <div class="dica-bloqueio" id="dicaBloqueio">🔒 O número não pode ser alterado durante a edição (segurança).</div>
       </div>
       <div>
         <label>4 últimos dígitos do telefone</label>
@@ -218,9 +236,10 @@
       <input id="fNome" type="text" placeholder="Nome completo">
     </div>
     <div class="acoes">
-      <button class="btn" onclick="salvarCupom()">Salvar cupom</button>
-      <button class="btn sec" onclick="limparForm()">Limpar campos</button>
-      <button class="btn sec" onclick="proximoLivre()">Sugerir nº livre</button>
+      <button class="btn" id="btnSalvar" onclick="salvarCupom()">Salvar cupom</button>
+      <button class="btn sec" id="btnCancelarEdicao" onclick="limparForm()" style="display:none">Cancelar edição</button>
+      <button class="btn sec" id="btnLimpar" onclick="limparForm()">Limpar campos</button>
+      <button class="btn sec" id="btnSugerir" onclick="proximoLivre()">Sugerir nº livre</button>
     </div>
     <div class="aviso" id="avisoForm"></div>
   </div>
@@ -233,7 +252,8 @@
     <div style="overflow-x:auto">
       <table class="tabela">
         <thead><tr>
-          <th>Cupom</th><th>Nome</th><th class="telCol">Telefone</th><th></th>
+          <th>Cupom</th><th>Nome</th><th class="telCol">Telefone</th>
+          <th class="dataCol">Atualizado</th><th></th>
         </tr></thead>
         <tbody id="corpoTabela"></tbody>
       </table>
@@ -254,7 +274,7 @@
 <canvas id="confete"></canvas>
 
 <script>
-let CUPONS=[], GRADE=null;
+let CUPONS=[], GRADE=null, EDITANDO=null; // EDITANDO guarda o número que está em edição
 
 async function api(rota,metodo='GET',corpo){
   const opt={method:metodo,headers:{'Content-Type':'application/json'}};
@@ -271,6 +291,17 @@ function avisar(id,txt,tipo){
   const e=document.getElementById(id);
   e.textContent=txt; e.className='aviso '+(tipo||'');
   if(tipo==='ok') setTimeout(()=>{e.textContent='';},3000);
+}
+function dataCurta(iso){
+  if(!iso) return '—';
+  try{
+    const d=new Date(iso); const hj=new Date();
+    const mesmoDia = d.toDateString()===hj.toDateString();
+    if(mesmoDia){
+      return 'hoje, '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    }
+    return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+  }catch(e){ return '—'; }
 }
 
 /* ---- login ---- */
@@ -482,7 +513,7 @@ function renderTabela(){
   const lista=CUPONS.filter(c=>
     !f || c.nome.toLowerCase().includes(f) || String(c.numero).includes(f));
   if(lista.length===0){
-    corpo.innerHTML='<tr><td colspan="4" class="vazio">Nenhum cupom encontrado.</td></tr>';
+    corpo.innerHTML='<tr><td colspan="5" class="vazio">Nenhum cupom encontrado.</td></tr>';
     return;
   }
   corpo.innerHTML=lista.map(c=>`
@@ -490,6 +521,7 @@ function renderTabela(){
       <td class="cnum">${c.numero}</td>
       <td>${escapar(c.nome)}</td>
       <td class="telCol">${c.telefone}</td>
+      <td class="dataCol" style="color:var(--tinta-suave);font-size:13px">${dataCurta(c.atualizado_em)}</td>
       <td style="text-align:right;white-space:nowrap">
         <button class="btn sec mini" onclick="editar(${c.numero})">Editar</button>
         <button class="btn perigo mini" onclick="remover(${c.numero})">Remover</button>
@@ -498,40 +530,78 @@ function renderTabela(){
 }
 
 /* ---- formulario ---- */
+function modoEdicao(numero){
+  // entra no modo edicao: trava o numero, mostra badge e botao cancelar
+  EDITANDO = numero;
+  const inpNum = document.getElementById('fNumero');
+  inpNum.readOnly = true;
+  inpNum.setAttribute('aria-readonly','true');
+  document.getElementById('badgeEdicao').textContent = '🔒 editando Nº '+numero;
+  document.getElementById('badgeEdicao').classList.add('on');
+  document.getElementById('dicaBloqueio').classList.add('on');
+  document.getElementById('btnCancelarEdicao').style.display = '';
+  document.getElementById('btnSugerir').style.display = 'none';
+  document.getElementById('tituloForm').firstChild.nodeValue = 'Editar cupom ';
+  document.getElementById('btnSalvar').textContent = 'Salvar alterações';
+}
+function modoCriacao(){
+  // volta ao modo padrao (criar novo): destrava o numero
+  EDITANDO = null;
+  const inpNum = document.getElementById('fNumero');
+  inpNum.readOnly = false;
+  inpNum.removeAttribute('aria-readonly');
+  document.getElementById('badgeEdicao').textContent = '';
+  document.getElementById('badgeEdicao').classList.remove('on');
+  document.getElementById('dicaBloqueio').classList.remove('on');
+  document.getElementById('btnCancelarEdicao').style.display = 'none';
+  document.getElementById('btnSugerir').style.display = '';
+  document.getElementById('tituloForm').firstChild.nodeValue = 'Adicionar cupom';
+  document.getElementById('btnSalvar').textContent = 'Salvar cupom';
+}
+
 function editar(numero){
   const c=CUPONS.find(x=>x.numero===numero); if(!c) return;
   document.getElementById('fNumero').value=c.numero;
   document.getElementById('fNome').value=c.nome;
   document.getElementById('fTel').value=c.telefone;
-  document.getElementById('tituloForm').textContent='Editar cupom Nº '+c.numero;
+  modoEdicao(c.numero);
   document.getElementById('avisoForm').textContent='';
   scrollTo({top:document.getElementById('tituloForm').offsetTop-90,behavior:'smooth'});
 }
 function limparForm(){
   ['fNumero','fNome','fTel'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('tituloForm').textContent='Adicionar cupom';
+  modoCriacao();
   document.getElementById('avisoForm').textContent='';
 }
 function proximoLivre(){
+  if(EDITANDO!==null) return; // segurança: nao opera durante edicao
   const usados=new Set(CUPONS.map(c=>c.numero));
   for(let n=1;n<=100;n++) if(!usados.has(n)){
     document.getElementById('fNumero').value=n; return; }
   avisar('avisoForm','Todos os 100 cupons já estão preenchidos.','erro');
 }
 async function salvarCupom(){
+  // decide a operacao com base no estado EDITANDO (e nao no que esta no campo)
+  const operacao = (EDITANDO !== null) ? 'atualizar' : 'criar';
+  // se for atualizar, o numero usado e o que travamos (defesa em profundidade)
+  const numero = (EDITANDO !== null) ? EDITANDO : document.getElementById('fNumero').value;
   const r=await api('/api/admin/cupom','POST',{
-    numero:document.getElementById('fNumero').value,
+    numero,
     nome:document.getElementById('fNome').value,
-    telefone:document.getElementById('fTel').value
+    telefone:document.getElementById('fTel').value,
+    operacao
   });
   if(r.status===200){
-    avisar('avisoForm','Cupom salvo com sucesso.','ok');
+    avisar('avisoForm',
+      r.dados.modo==='criado'?'Cupom criado com sucesso.':'Cupom atualizado com sucesso.',
+      'ok');
     limparForm(); await carregar();
   }else avisar('avisoForm',r.dados.erro||'Erro ao salvar.','erro');
 }
 async function remover(numero){
   if(!confirm('Remover o cupom Nº '+numero+'?')) return;
   await api('/api/admin/limpar','POST',{numero});
+  if(EDITANDO===numero) limparForm(); // se removeu o que estava editando, sai do modo edicao
   await carregar();
 }
 
