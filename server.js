@@ -23,7 +23,7 @@ function abrirBanco(arquivo) {
 }
 
 /* ====== CONFIGURACOES ======================================= */
-const VERSAO       = '2.0.4';
+const VERSAO       = '2.0.6';
 const PORTA        = 3001;
 const TOTAL_CUPONS = 100;
 const NOME_MARCA   = '';
@@ -37,6 +37,92 @@ const BONUS = {
   emoji: '🌟', rotulo: 'Bônus',
   descricao: 'R$ 100,00 extras para quem tem mais indicações fechadas'
 };
+/* ============================================================ */
+
+/* ====== Notificações ntfy.sh ================================== */
+// Le o topico do arquivo /opt/omago-backups/ntfy.conf na inicializacao.
+// Se o arquivo nao existir, fica silencioso (nao envia nada).
+const NTFY_CONF_PATH = '/opt/omago-backups/ntfy.conf';
+let ntfyTopico = '';
+try {
+  ntfyTopico = require('node:fs').readFileSync(NTFY_CONF_PATH, 'utf8').trim();
+  if (ntfyTopico) {
+    console.log('[ntfy] notificacoes habilitadas');
+  }
+} catch (e) {
+  console.log('[ntfy] notificacoes desabilitadas (arquivo de topico ausente)');
+}
+
+// Envia notificacao push assincronamente (fire-and-forget).
+// NUNCA bloqueia a resposta HTTP da API. Se ntfy.sh estiver fora,
+// apenas registra o erro no log e segue a vida.
+function notificarNtfy(titulo, corpo, tag = 'bell', prio = 'default') {
+  if (!ntfyTopico) return;
+  try {
+    fetch(`https://ntfy.sh/${ntfyTopico}`, {
+      method: 'POST',
+      headers: {
+        'Title': titulo,
+        'Tags': tag,
+        'Priority': prio
+      },
+      body: corpo,
+      signal: AbortSignal.timeout(8000)
+    }).catch((err) => {
+      console.log('[ntfy] falha ao notificar:', err && err.message);
+    });
+  } catch (e) {
+    console.log('[ntfy] erro:', e && e.message);
+  }
+}
+
+// Marcos de progresso para notificar (somente quando ATRAVESSADOS).
+const MARCOS_CUPONS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 99, 100];
+function marcosCruzados(antes, depois) {
+  return MARCOS_CUPONS.filter((m) => antes < m && depois >= m);
+}
+
+// Remove acentos / diacriticos de uma string (NFD + filtro de marcas)
+// Necessario porque ntfy.sh + iOS corrompem certos caracteres UTF-8.
+function semAcento(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+// Texto especifico para cada marco
+function notificarMarco(marco, total) {
+  if (marco === 100) {
+    notificarNtfy('PRONTO PARA SORTEAR!',
+      `100/100 cupons distribuidos. Voce pode rodar o sorteio agora!`,
+      'rotating_light', 'high');
+  } else if (marco === 99) {
+    notificarNtfy('Falta apenas 1!',
+      `${total}/100 cupons. Mais uma indicacao e o sorteio fica completo!`,
+      'fire', 'high');
+  } else if (marco === 90) {
+    notificarNtfy('Reta final!',
+      `${total}/100 cupons. Quase la!`, 'checkered_flag', 'default');
+  } else if (marco === 50) {
+    notificarNtfy('Metade do caminho!',
+      `${total}/100 cupons distribuidos.`, 'dart', 'default');
+  } else {
+    notificarNtfy(`${marco} cupons distribuidos`,
+      `${total}/100 cupons. Continua firme!`, 'dart', 'low');
+  }
+}
+
+// Captura o IP REAL do cliente (considerando nginx/proxy na frente)
+function obterIP(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) return String(xff).split(',')[0].trim();
+  const xri = req.headers['x-real-ip'];
+  if (xri) return String(xri).trim();
+  return (req.socket && req.socket.remoteAddress) || 'desconhecido';
+}
+
+// Cache em memoria do estado de login por IP (zera em restart do PM2)
+const loginEstado = new Map(); // ip -> { falhas, primeiraFalha, ultimoSucesso, jaAlertou3, jaAlertou10 }
+const JANELA_FALHAS_MS    = 30 * 60 * 1000; // 30 min
+const THROTTLE_SUCESSO_MS = 30 * 60 * 1000; // so notifica login bem-sucedido se faz >30min do ultimo
 /* ============================================================ */
 
 const DIR    = __dirname;
@@ -295,7 +381,22 @@ const servidor = http.createServer(async (req, res) => {
   // ---- Login / Logout ----
   if (rota === '/api/login' && m === 'POST') {
     const corpo = await lerCorpo(req);
+    const ip = obterIP(req);
+    const agora = Date.now();
+    const st = loginEstado.get(ip) || { falhas: 0 };
+
     if (String(corpo.senha || '') === SENHA_ADMIN) {
+      // SUCESSO: limpa contagem de falhas, notifica se passou o throttle
+      const passouThrottle = !st.ultimoSucesso || (agora - st.ultimoSucesso) > THROTTLE_SUCESSO_MS;
+      if (passouThrottle) {
+        notificarNtfy(
+          'Login no painel admin',
+          `IP: ${ip}\nHorario: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`,
+          'key', 'default'
+        );
+      }
+      loginEstado.set(ip, { falhas: 0, ultimoSucesso: agora });
+
       const token = crypto.randomBytes(24).toString('hex');
       sessoes.add(token);
       res.writeHead(200, {
@@ -304,6 +405,27 @@ const servidor = http.createServer(async (req, res) => {
       });
       return res.end(JSON.stringify({ ok: true }));
     }
+
+    // FALHA: incrementa contagem, alerta em 3 e 10 falhas (uma vez cada)
+    if (st.primeiraFalha && agora - st.primeiraFalha > JANELA_FALHAS_MS) {
+      st.falhas = 0; st.jaAlertou3 = false; st.jaAlertou10 = false;
+    }
+    if (!st.falhas) { st.primeiraFalha = agora; }
+    st.falhas = (st.falhas || 0) + 1;
+
+    if (st.falhas >= 10 && !st.jaAlertou10) {
+      st.jaAlertou10 = true;
+      notificarNtfy('POSSIVEL ATAQUE no painel admin',
+        `IP ${ip} falhou ${st.falhas} vezes nos ultimos 30 min. Considere trocar a senha.`,
+        'rotating_light', 'urgent');
+    } else if (st.falhas >= 3 && !st.jaAlertou3) {
+      st.jaAlertou3 = true;
+      notificarNtfy('Tentativas de login falhas',
+        `IP ${ip} falhou ${st.falhas} vezes seguidas.`,
+        'warning', 'high');
+    }
+    loginEstado.set(ip, st);
+
     await new Promise((r) => setTimeout(r, 600));
     return json(res, 401, { ok: false, erro: 'Senha incorreta.' });
   }
@@ -365,9 +487,25 @@ const servidor = http.createServer(async (req, res) => {
                   `Para liberá-lo, clique em "Remover".`
           });
         }
+        // total ANTES do insert para detectar atravessamento de marcos
+        const totalAntes = db.prepare('SELECT COUNT(*) c FROM cupons').get().c;
         db.prepare(
           'INSERT INTO cupons (numero,nome,telefone,atualizado_em) VALUES (?,?,?,?)'
         ).run(numero, nome, tel, agora);
+        const totalDepois = totalAntes + 1;
+
+        // Notificacao 1: nova indicacao fechada (toda vez)
+        notificarNtfy(
+          'Nova indicacao fechada!',
+          `Cupom ${numero} - ${semAcento(nome)} (final ${tel})\nTotal: ${totalDepois}/${TOTAL_CUPONS} cupons`,
+          'tada', 'default'
+        );
+
+        // Notificacao 2: marcos cruzados (so quando atravessar 10/20/.../90/99/100)
+        for (const marco of marcosCruzados(totalAntes, totalDepois)) {
+          notificarMarco(marco, totalDepois);
+        }
+
         return json(res, 200, { ok: true, modo: 'criado', numero });
       }
 
